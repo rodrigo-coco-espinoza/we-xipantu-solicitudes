@@ -1,0 +1,25 @@
+/*
+Paleta oficial JUNJI / Gobierno de Chile, extraída visualmente del documento
+"Documento Oficial Power Point 2026.pdf" (portada, logo y láminas de título).
+Los hex son una aproximación visual del PDF (no traía códigos de color en
+texto/CMYK); si existe un manual de marca con códigos exactos, ajustar aquí.
+*/
+:root {
+  --azul-junji: #0b4c8c;
+  --rojo-junji: #d2232a;
+  --azul-oscuro: #1b2a63;
+  --blanco: #ffffff;
+
+  --texto: #2b2b2b;
+  --texto-secundario: #666666;
+  --borde: #dddddd;
+  --fondo-pagina: #f6f7f8;
+  --fondo-tarjeta: #ffffff;
+
+  --naranja: #ed7d31;
+  --gris: #c4c4c4;
+  --morado: #7a1fa2;
+  --celeste: #29b6d8;
+  --azul-marino: #1f3b73;
+  --verde: #2e7d32;
+}

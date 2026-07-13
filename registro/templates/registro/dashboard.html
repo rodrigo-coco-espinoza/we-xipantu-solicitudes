@@ -1,0 +1,13 @@
+{% extends "registro/base.html" %}
+{% load static %}
+
+{% block titulo %}{{ jardin.nombre }}{% endblock %}
+
+{% block contenido %}
+<div class="home">
+  <h1>{{ jardin.nombre }}</h1>
+  <div class="marco-foto">
+    <img src="{% static 'registro/img/jardin.jpeg' %}" alt="Jardín {{ jardin.nombre }}">
+  </div>
+</div>
+{% endblock %}

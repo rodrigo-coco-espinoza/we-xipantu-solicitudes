@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="es-cl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{% load static %}
+<link rel="stylesheet" href="{% static 'registro/css/palette.css' %}">
+<title>{% block titulo %}We Xipantu{% endblock %}</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+  body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    color: var(--texto);
+    background: var(--fondo-pagina);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  header {
+    background: var(--azul-oscuro);
+    color: var(--blanco);
+    padding: 16px 24px;
+  }
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  header a {
+    color: var(--blanco);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1.1rem;
+  }
+  .marca {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo-header {
+    height: 40px;
+    width: auto;
+  }
+  header nav a {
+    font-weight: 400;
+    font-size: 0.95rem;
+    margin-left: 20px;
+  }
+  header nav a:hover {
+    color: var(--rojo-junji);
+    text-decoration: underline;
+  }
+  main {
+    flex: 1;
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  footer {
+    background: var(--azul-oscuro);
+    color: var(--blanco);
+    padding: 12px 24px;
+    text-align: center;
+    font-size: 0.85rem;
+  }
+  .home {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 24px;
+    padding-top: 24px;
+  }
+  .home h1 {
+    color: var(--azul-oscuro);
+  }
+  .marco-foto {
+    border: 1px solid var(--borde);
+    border-radius: 16px;
+    padding: 12px;
+    background: var(--fondo-tarjeta);
+  }
+  .marco-foto img {
+    display: block;
+    max-width: 100%;
+    max-height: 60vh;
+    border-radius: 10px;
+  }
+  h1, h2 {
+    color: var(--azul-oscuro);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--fondo-tarjeta);
+    margin-bottom: 32px;
+  }
+  th, td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--borde);
+    text-align: left;
+    font-size: 0.95rem;
+  }
+  th {
+    background: var(--azul-oscuro);
+    color: var(--blanco);
+  }
+  .acciones {
+    display: flex;
+    gap: 8px;
+  }
+  .acciones button {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    border: 1px solid var(--azul-junji);
+    border-radius: 6px;
+    background: var(--blanco);
+    color: var(--azul-junji);
+    cursor: pointer;
+  }
+  .acciones button:hover {
+    background: var(--azul-junji);
+    color: var(--blanco);
+  }
+  .vacio {
+    color: var(--texto-secundario);
+    font-style: italic;
+    padding: 8px 0 24px;
+  }
+  .fila-funcionaria {
+    cursor: pointer;
+  }
+  .fila-funcionaria:hover {
+    background: var(--fondo-pagina);
+  }
+  .fila-historial td {
+    background: var(--fondo-pagina);
+    padding: 16px;
+  }
+  .historial-contenedor {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .historial-columna {
+    flex: 1;
+    min-width: 260px;
+  }
+  .historial-columna h3 {
+    margin: 0 0 8px;
+    font-size: 0.95rem;
+    color: var(--azul-oscuro);
+  }
+  .historial-tabla-scroll {
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+  }
+  .tabla-historial {
+    width: 100%;
+    margin-bottom: 0;
+    border-collapse: collapse;
+  }
+  .tabla-historial th {
+    position: sticky;
+    top: 0;
+  }
+  .tabla-historial th,
+  .tabla-historial td {
+    font-size: 0.85rem;
+    padding: 6px 10px;
+  }
+  .historial-vacio {
+    padding: 8px 10px !important;
+    color: var(--texto-secundario);
+    font-style: italic;
+    font-size: 0.85rem;
+  }
+  .boton-primario {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    background: var(--azul-junji);
+    border: 1px solid var(--azul-junji);
+    color: var(--blanco);
+  }
+  .barra-acciones {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+  }
+  .flash-container {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .flash {
+    background: var(--verde);
+    color: var(--blanco);
+    padding: 12px 18px;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    font-size: 0.9rem;
+    max-width: 320px;
+  }
+  .flash.error {
+    background: var(--rojo-junji);
+  }
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    align-items: center;
+    justify-content: center;
+    z-index: 900;
+  }
+  .modal-overlay.abierto {
+    display: flex;
+  }
+  .modal {
+    background: var(--fondo-tarjeta);
+    border-radius: 10px;
+    padding: 24px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  }
+  .modal h2 {
+    margin-top: 0;
+  }
+  .modal .campo {
+    margin-bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .modal label {
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  .modal input,
+  .modal select {
+    padding: 8px 10px;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    font-size: 0.95rem;
+  }
+  .modal .campo-fila {
+    display: flex;
+    gap: 16px;
+  }
+  .modal .campo-fila .campo {
+    flex: 1;
+    min-width: 0;
+  }
+  .modal .selector-hora {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .modal .selector-hora select {
+    flex: 1;
+    min-width: 0;
+  }
+  .modal .campo-checkboxes {
+    display: flex;
+    gap: 20px;
+  }
+  .modal .campo-checkboxes label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 400;
+  }
+  .modal .campo-checkboxes input {
+    width: auto;
+  }
+  .modal .modal-error {
+    color: var(--rojo-junji);
+    font-size: 0.85rem;
+    margin-top: -6px;
+  }
+  .modal .modal-acciones {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+  }
+  .modal .modal-acciones button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .modal .btn-cancelar {
+    background: var(--blanco);
+    border: 1px solid var(--borde);
+    color: var(--texto);
+  }
+  .modal .btn-confirmar {
+    background: var(--azul-junji);
+    border: 1px solid var(--azul-junji);
+    color: var(--blanco);
+  }
+</style>
+</head>
+<body>
+<div class="flash-container" id="flash-container"></div>
+<header>
+  <div class="header-inner">
+    <a href="{% url 'registro:dashboard' %}" class="marca">
+      <img src="{% static 'registro/img/logo-junji.jpeg' %}" alt="JUNJI" class="logo-header">
+      We Xipantu
+    </a>
+    <nav>
+      <a href="{% url 'registro:descanso_complementario' %}">Descanso complementario</a>
+      <a href="{% url 'registro:dias_administrativos' %}">Días administrativos</a>
+    </nav>
+  </div>
+</header>
+<main>
+  {% block contenido %}{% endblock %}
+</main>
+<footer>
+  {% block footer %}We Xipantu - 2026{% endblock %}
+</footer>
+<script>
+  function mostrarFlash(mensaje, tipo) {
+    const contenedor = document.getElementById("flash-container");
+    const flash = document.createElement("div");
+    flash.className = "flash" + (tipo === "error" ? " error" : "");
+    flash.textContent = mensaje;
+    contenedor.appendChild(flash);
+    setTimeout(() => flash.remove(), 4000);
+  }
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

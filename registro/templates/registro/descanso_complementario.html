@@ -1,0 +1,442 @@
+{% extends "registro/base.html" %}
+
+{% block titulo %}Registro de descanso complementario{% endblock %}
+
+{% block contenido %}
+<h1>Registro de descanso complementario</h1>
+
+{% for grupo in grupos %}
+<h2>{{ grupo.titulo }}</h2>
+{% if grupo.filas %}
+<table>
+  <thead>
+    <tr>
+      <th>Nombre</th>
+      <th>Horas disponibles</th>
+      <th>Horas utilizadas (este mes)</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for fila in grupo.filas %}
+    <tr class="fila-funcionaria" data-funcionaria-id="{{ fila.funcionaria.id }}"
+        data-historial-url="{% url 'registro:historial_horas' fila.funcionaria.id %}">
+      <td>{{ fila.nombre_corto }}</td>
+      <td class="horas-disponibles">{{ fila.horas_disponibles }} h</td>
+      <td class="horas-utilizadas">{{ fila.horas_utilizadas_mes }} h</td>
+      <td class="acciones">
+        <button type="button" class="btn-cargar-horas"
+                data-funcionaria-id="{{ fila.funcionaria.id }}"
+                data-funcionaria-nombre="{{ fila.nombre_corto }}">Cargar horas</button>
+        <button type="button" class="btn-descontar-horas"
+                data-funcionaria-id="{{ fila.funcionaria.id }}"
+                data-funcionaria-nombre="{{ fila.nombre_corto }}">Descontar horas</button>
+      </td>
+    </tr>
+    <tr class="fila-historial" data-funcionaria-id="{{ fila.funcionaria.id }}" style="display: none;">
+      <td colspan="4">
+        <div class="historial-contenedor">
+          <div class="historial-columna">
+            <h3>Horas cargadas</h3>
+            <div class="historial-tabla-scroll">
+              <table class="tabla-historial">
+                <thead><tr><th>Fecha</th><th>Horas</th><th>Motivo</th></tr></thead>
+                <tbody class="tabla-cargas"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="historial-columna">
+            <h3>Horas usadas</h3>
+            <div class="historial-tabla-scroll">
+              <table class="tabla-historial">
+                <thead><tr><th>Día</th><th>Desde</th><th>Hasta</th><th>Fecha de solicitud</th><th>Horas</th></tr></thead>
+                <tbody class="tabla-usos"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="vacio">No hay funcionarias registradas en este estamento.</p>
+{% endif %}
+{% endfor %}
+
+<div class="modal-overlay" id="modal-cargar-horas">
+  <div class="modal">
+    <h2>Cargar horas a: </h2>
+    <p id="modal-cargar-horas-funcionaria"></p>
+    <form id="form-cargar-horas">
+      {% csrf_token %}
+      <input type="hidden" name="funcionaria_id" id="id_funcionaria_id">
+      <div class="campo">
+        <label for="id_cantidad_horas">Número de horas</label>
+        <input type="number" step="0.01" min="0.01" name="cantidad_horas" id="id_cantidad_horas" required>
+        <div class="modal-error" data-error-for="cantidad_horas"></div>
+      </div>
+      <div class="campo">
+        <label for="id_fecha">Fecha</label>
+        <input type="date" name="fecha" id="id_fecha" lang="es-CL" required>
+        <div class="modal-error" data-error-for="fecha"></div>
+      </div>
+      <div class="campo">
+        <label for="id_motivo">Motivo (opcional)</label>
+        <input type="text" name="motivo" id="id_motivo">
+        <div class="modal-error" data-error-for="motivo"></div>
+      </div>
+      <div class="modal-acciones">
+        <button type="button" class="btn-cancelar" id="btn-cancelar-cargar-horas">Cancelar</button>
+        <button type="submit" class="btn-confirmar">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-descontar-horas">
+  <div class="modal">
+    <h2>Descontar horas</h2>
+    <p id="modal-descontar-horas-funcionaria"></p>
+    <form id="form-descontar-horas">
+      {% csrf_token %}
+      <input type="hidden" name="funcionaria_id" id="id_descontar_funcionaria_id">
+      <div class="campo">
+        <label for="id_dia">Día</label>
+        <input type="date" name="dia" id="id_dia" lang="es-CL" required>
+        <div class="modal-error" data-error-for="dia"></div>
+      </div>
+      <div class="campo-fila">
+        <div class="campo">
+          <label for="id_desde_hora">Desde</label>
+          <div class="selector-hora">
+            <select id="id_desde_hora" required></select>
+            <span>:</span>
+            <select id="id_desde_minuto" required></select>
+          </div>
+          <input type="hidden" name="desde" id="id_desde">
+          <div class="modal-error" data-error-for="desde"></div>
+        </div>
+        <div class="campo">
+          <label for="id_hasta_hora">Hasta</label>
+          <div class="selector-hora">
+            <select id="id_hasta_hora" required></select>
+            <span>:</span>
+            <select id="id_hasta_minuto" required></select>
+          </div>
+          <input type="hidden" name="hasta" id="id_hasta">
+          <div class="modal-error" data-error-for="hasta"></div>
+        </div>
+      </div>
+      <div class="campo">
+        <label for="id_fecha_solicitud">Fecha de solicitud</label>
+        <input type="date" name="fecha_solicitud" id="id_fecha_solicitud" lang="es-CL" required>
+        <div class="modal-error" data-error-for="fecha_solicitud"></div>
+      </div>
+      <p id="horas-calculadas">Horas solicitadas: <strong>0.00</strong> h</p>
+      <div class="modal-error" id="advertencia-horas"></div>
+      <div class="modal-error" data-error-for="__all__"></div>
+      <div class="modal-acciones">
+        <button type="button" class="btn-cancelar" id="btn-cancelar-descontar-horas">Cancelar</button>
+        <button type="submit" class="btn-confirmar">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    const overlay = document.getElementById("modal-cargar-horas");
+    const form = document.getElementById("form-cargar-horas");
+    const campoFuncionariaId = document.getElementById("id_funcionaria_id");
+    const campoFecha = document.getElementById("id_fecha");
+    const campoCantidad = document.getElementById("id_cantidad_horas");
+    const textoFuncionaria = document.getElementById("modal-cargar-horas-funcionaria");
+
+    function hoyISO() {
+      const hoy = new Date();
+      const mes = String(hoy.getMonth() + 1).padStart(2, "0");
+      const dia = String(hoy.getDate()).padStart(2, "0");
+      return `${hoy.getFullYear()}-${mes}-${dia}`;
+    }
+
+    function limpiarErrores() {
+      form.querySelectorAll(".modal-error").forEach((el) => (el.textContent = ""));
+    }
+
+    function abrirModal(funcionariaId, funcionariaNombre) {
+      form.reset();
+      limpiarErrores();
+      campoFuncionariaId.value = funcionariaId;
+      campoFecha.value = hoyISO();
+      textoFuncionaria.textContent = funcionariaNombre;
+      overlay.classList.add("abierto");
+      campoCantidad.focus();
+    }
+
+    function cerrarModal() {
+      overlay.classList.remove("abierto");
+    }
+
+    document.querySelectorAll(".btn-cargar-horas").forEach((boton) => {
+      boton.addEventListener("click", (evento) => {
+        evento.stopPropagation();
+        abrirModal(boton.dataset.funcionariaId, boton.dataset.funcionariaNombre);
+      });
+    });
+
+    document.getElementById("btn-cancelar-cargar-horas").addEventListener("click", cerrarModal);
+    overlay.addEventListener("click", (evento) => {
+      if (evento.target === overlay) cerrarModal();
+    });
+
+    form.addEventListener("submit", async (evento) => {
+      evento.preventDefault();
+      limpiarErrores();
+
+      const respuesta = await fetch("{% url 'registro:cargar_horas' %}", {
+        method: "POST",
+        headers: { "X-CSRFToken": form.querySelector("[name=csrfmiddlewaretoken]").value },
+        body: new FormData(form),
+      });
+      const datos = await respuesta.json();
+
+      if (!datos.ok) {
+        Object.entries(datos.errors).forEach(([campo, errores]) => {
+          const el = form.querySelector(`[data-error-for="${campo}"]`);
+          if (el) el.textContent = errores.map((e) => e.message).join(" ");
+        });
+        return;
+      }
+
+      const fila = document.querySelector(`tr.fila-funcionaria[data-funcionaria-id="${campoFuncionariaId.value}"]`);
+      if (fila) fila.querySelector(".horas-disponibles").textContent = `${datos.horas_disponibles} h`;
+
+      cerrarModal();
+      mostrarFlash(datos.mensaje);
+    });
+  })();
+
+  (function () {
+    const overlay = document.getElementById("modal-descontar-horas");
+    const form = document.getElementById("form-descontar-horas");
+    const campoFuncionariaId = document.getElementById("id_descontar_funcionaria_id");
+    const campoDia = document.getElementById("id_dia");
+    const campoDesde = document.getElementById("id_desde");
+    const campoHasta = document.getElementById("id_hasta");
+    const desdeHora = document.getElementById("id_desde_hora");
+    const desdeMinuto = document.getElementById("id_desde_minuto");
+    const hastaHora = document.getElementById("id_hasta_hora");
+    const hastaMinuto = document.getElementById("id_hasta_minuto");
+    const campoFechaSolicitud = document.getElementById("id_fecha_solicitud");
+    const textoFuncionaria = document.getElementById("modal-descontar-horas-funcionaria");
+    const horasCalculadas = document.getElementById("horas-calculadas").querySelector("strong");
+    const advertenciaHoras = document.getElementById("advertencia-horas");
+
+    function poblarSelector(select, cantidad, inicio = 0) {
+      const vacia = document.createElement("option");
+      vacia.value = "";
+      vacia.textContent = "--";
+      vacia.setAttribute("selected", "selected");
+      select.appendChild(vacia);
+      for (let i = 0; i < cantidad; i++) {
+        const valor = inicio + i;
+        const opcion = document.createElement("option");
+        opcion.value = String(valor).padStart(2, "0");
+        opcion.textContent = String(valor).padStart(2, "0");
+        select.appendChild(opcion);
+      }
+    }
+    poblarSelector(desdeHora, 10, 8);
+    poblarSelector(desdeMinuto, 60);
+    poblarSelector(hastaHora, 10, 8);
+    poblarSelector(hastaMinuto, 60);
+
+    function hoyISO() {
+      const hoy = new Date();
+      const mes = String(hoy.getMonth() + 1).padStart(2, "0");
+      const dia = String(hoy.getDate()).padStart(2, "0");
+      return `${hoy.getFullYear()}-${mes}-${dia}`;
+    }
+
+    function limpiarErrores() {
+      form.querySelectorAll(".modal-error").forEach((el) => (el.textContent = ""));
+    }
+
+    function actualizarHorasCalculadas() {
+      const [desde, hasta] = [campoDesde.value, campoHasta.value];
+      if (!desde || !hasta) {
+        horasCalculadas.textContent = "0.00";
+        advertenciaHoras.textContent = "";
+        return;
+      }
+      const [hDesde, mDesde] = desde.split(":").map(Number);
+      const [hHasta, mHasta] = hasta.split(":").map(Number);
+      const minutos = (hHasta * 60 + mHasta) - (hDesde * 60 + mDesde);
+      const horas = minutos > 0 ? minutos / 60 : 0;
+      horasCalculadas.textContent = horas.toFixed(2);
+
+      const disponibles = parseFloat(form.dataset.horasDisponibles || "0");
+      advertenciaHoras.textContent =
+        horas > disponibles ? `Supera las horas disponibles (${disponibles.toFixed(2)} h).` : "";
+    }
+
+    function actualizarHoraOculta(campoOculto, selectHora, selectMinuto) {
+      campoOculto.value = selectHora.value && selectMinuto.value ? `${selectHora.value}:${selectMinuto.value}` : "";
+      actualizarHorasCalculadas();
+    }
+
+    [desdeHora, desdeMinuto].forEach((select) => {
+      select.addEventListener("change", () => actualizarHoraOculta(campoDesde, desdeHora, desdeMinuto));
+    });
+    [hastaHora, hastaMinuto].forEach((select) => {
+      select.addEventListener("change", () => actualizarHoraOculta(campoHasta, hastaHora, hastaMinuto));
+    });
+
+    function abrirModal(funcionariaId, funcionariaNombre, horasDisponibles) {
+      form.reset();
+      limpiarErrores();
+      campoFuncionariaId.value = funcionariaId;
+      campoFechaSolicitud.value = hoyISO();
+      textoFuncionaria.textContent = funcionariaNombre;
+      form.dataset.horasDisponibles = horasDisponibles;
+      actualizarHorasCalculadas();
+      overlay.classList.add("abierto");
+      campoDia.focus();
+    }
+
+    function cerrarModal() {
+      overlay.classList.remove("abierto");
+    }
+
+    document.querySelectorAll(".btn-descontar-horas").forEach((boton) => {
+      boton.addEventListener("click", (evento) => {
+        evento.stopPropagation();
+        const fila = document.querySelector(`tr.fila-funcionaria[data-funcionaria-id="${boton.dataset.funcionariaId}"]`);
+        const horasDisponibles = fila ? parseFloat(fila.querySelector(".horas-disponibles").textContent) : 0;
+        abrirModal(boton.dataset.funcionariaId, boton.dataset.funcionariaNombre, horasDisponibles);
+      });
+    });
+
+    document.getElementById("btn-cancelar-descontar-horas").addEventListener("click", cerrarModal);
+    overlay.addEventListener("click", (evento) => {
+      if (evento.target === overlay) cerrarModal();
+    });
+
+    form.addEventListener("submit", async (evento) => {
+      evento.preventDefault();
+      limpiarErrores();
+
+      const respuesta = await fetch("{% url 'registro:descontar_horas' %}", {
+        method: "POST",
+        headers: { "X-CSRFToken": form.querySelector("[name=csrfmiddlewaretoken]").value },
+        body: new FormData(form),
+      });
+      const datos = await respuesta.json();
+
+      if (!datos.ok) {
+        Object.entries(datos.errors).forEach(([campo, errores]) => {
+          const el = form.querySelector(`[data-error-for="${campo}"]`);
+          if (el) el.textContent = errores.map((e) => e.message).join(" ");
+        });
+        return;
+      }
+
+      const fila = document.querySelector(`tr.fila-funcionaria[data-funcionaria-id="${campoFuncionariaId.value}"]`);
+      if (fila) {
+        fila.querySelector(".horas-disponibles").textContent = `${datos.horas_disponibles} h`;
+        fila.querySelector(".horas-utilizadas").textContent = `${datos.horas_utilizadas_mes} h`;
+      }
+
+      cerrarModal();
+      mostrarFlash(datos.mensaje);
+    });
+  })();
+
+  (function () {
+    let filaHistorialAbierta = null;
+
+    function crearFilaTabla(valores) {
+      const fila = document.createElement("tr");
+      valores.forEach((valor) => {
+        const celda = document.createElement("td");
+        celda.textContent = valor;
+        fila.appendChild(celda);
+      });
+      return fila;
+    }
+
+    function mostrarMensaje(tbody, columnas, texto) {
+      tbody.innerHTML = "";
+      const fila = document.createElement("tr");
+      const celda = document.createElement("td");
+      celda.colSpan = columnas;
+      celda.className = "historial-vacio";
+      celda.textContent = texto;
+      fila.appendChild(celda);
+      tbody.appendChild(fila);
+    }
+
+    function pintarCargas(tbody, cargas) {
+      tbody.innerHTML = "";
+      if (cargas.length === 0) {
+        mostrarMensaje(tbody, 3, "Sin cargas registradas.");
+        return;
+      }
+      cargas.forEach((carga) => {
+        tbody.appendChild(crearFilaTabla([carga.fecha, `${carga.cantidad_horas} h`, carga.motivo || "—"]));
+      });
+    }
+
+    function pintarUsos(tbody, usos) {
+      tbody.innerHTML = "";
+      if (usos.length === 0) {
+        mostrarMensaje(tbody, 5, "Sin horas utilizadas.");
+        return;
+      }
+      usos.forEach((uso) => {
+        tbody.appendChild(
+          crearFilaTabla([uso.dia, uso.desde, uso.hasta, uso.fecha_solicitud, `${uso.horas_solicitadas} h`])
+        );
+      });
+    }
+
+    async function abrirHistorial(filaFuncionaria, filaHistorial) {
+      filaHistorial.style.display = "table-row";
+      const tbodyCargas = filaHistorial.querySelector(".tabla-cargas");
+      const tbodyUsos = filaHistorial.querySelector(".tabla-usos");
+      mostrarMensaje(tbodyCargas, 3, "Cargando...");
+      mostrarMensaje(tbodyUsos, 5, "Cargando...");
+
+      const respuesta = await fetch(filaFuncionaria.dataset.historialUrl);
+      const datos = await respuesta.json();
+      pintarCargas(tbodyCargas, datos.cargas);
+      pintarUsos(tbodyUsos, datos.usos);
+    }
+
+    document.querySelectorAll("tr.fila-funcionaria").forEach((filaFuncionaria) => {
+      filaFuncionaria.addEventListener("click", () => {
+        const funcionariaId = filaFuncionaria.dataset.funcionariaId;
+        const filaHistorial = document.querySelector(
+          `tr.fila-historial[data-funcionaria-id="${funcionariaId}"]`
+        );
+
+        if (filaHistorialAbierta && filaHistorialAbierta !== filaHistorial) {
+          filaHistorialAbierta.style.display = "none";
+        }
+
+        if (filaHistorial.style.display === "table-row") {
+          filaHistorial.style.display = "none";
+          filaHistorialAbierta = null;
+        } else {
+          abrirHistorial(filaFuncionaria, filaHistorial);
+          filaHistorialAbierta = filaHistorial;
+        }
+      });
+    });
+  })();
+</script>
+{% endblock %}
