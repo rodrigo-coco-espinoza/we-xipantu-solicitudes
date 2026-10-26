@@ -13,7 +13,6 @@
     <tr>
       <th>Nombre</th>
       <th>Horas disponibles</th>
-      <th>Horas utilizadas (este mes)</th>
       <th>Acciones</th>
     </tr>
   </thead>
@@ -22,25 +21,24 @@
     <tr class="fila-funcionaria" data-funcionaria-id="{{ fila.funcionaria.id }}"
         data-historial-url="{% url 'registro:historial_horas' fila.funcionaria.id %}">
       <td>{{ fila.nombre_corto }}</td>
-      <td class="horas-disponibles">{{ fila.horas_disponibles }} h</td>
-      <td class="horas-utilizadas">{{ fila.horas_utilizadas_mes }} h</td>
+      <td class="horas-disponibles" data-horas="{{ fila.horas_disponibles }}"></td>
       <td class="acciones">
-        <button type="button" class="btn-cargar-horas"
+        <button type="button" class="btn-icono btn-cargar-horas" title="Cargar horas"
                 data-funcionaria-id="{{ fila.funcionaria.id }}"
-                data-funcionaria-nombre="{{ fila.nombre_corto }}">Cargar horas</button>
-        <button type="button" class="btn-descontar-horas"
+                data-funcionaria-nombre="{{ fila.nombre_corto }}">+</button>
+        <button type="button" class="btn-icono btn-descontar-horas" title="Descontar horas"
                 data-funcionaria-id="{{ fila.funcionaria.id }}"
-                data-funcionaria-nombre="{{ fila.nombre_corto }}">Descontar horas</button>
+                data-funcionaria-nombre="{{ fila.nombre_corto }}">&minus;</button>
       </td>
     </tr>
     <tr class="fila-historial" data-funcionaria-id="{{ fila.funcionaria.id }}" style="display: none;">
-      <td colspan="4">
+      <td colspan="3">
         <div class="historial-contenedor">
           <div class="historial-columna">
             <h3>Horas cargadas</h3>
             <div class="historial-tabla-scroll">
               <table class="tabla-historial">
-                <thead><tr><th>Fecha</th><th>Horas</th><th>Motivo</th></tr></thead>
+                <thead><tr><th>Fecha</th><th>Horas</th><th>Motivo</th><th></th></tr></thead>
                 <tbody class="tabla-cargas"></tbody>
               </table>
             </div>
@@ -49,7 +47,7 @@
             <h3>Horas usadas</h3>
             <div class="historial-tabla-scroll">
               <table class="tabla-historial">
-                <thead><tr><th>Día</th><th>Desde</th><th>Hasta</th><th>Fecha de solicitud</th><th>Horas</th></tr></thead>
+                <thead><tr><th>Día</th><th>Desde</th><th>Hasta</th><th>Fecha de solicitud</th><th>Horas</th><th></th></tr></thead>
                 <tbody class="tabla-usos"></tbody>
               </table>
             </div>
@@ -134,7 +132,7 @@
         <input type="date" name="fecha_solicitud" id="id_fecha_solicitud" lang="es-CL" required>
         <div class="modal-error" data-error-for="fecha_solicitud"></div>
       </div>
-      <p id="horas-calculadas">Horas solicitadas: <strong>0.00</strong> h</p>
+      <p id="horas-calculadas">Horas solicitadas: <strong>00:00</strong></p>
       <div class="modal-error" id="advertencia-horas"></div>
       <div class="modal-error" data-error-for="__all__"></div>
       <div class="modal-acciones">
@@ -144,10 +142,35 @@
     </form>
   </div>
 </div>
+
+<div class="modal-overlay" id="modal-confirmar-eliminar">
+  <div class="modal">
+    <h2>Eliminar registro</h2>
+    <p id="modal-confirmar-eliminar-texto"></p>
+    <div class="modal-acciones">
+      <button type="button" class="btn-cancelar" id="btn-cancelar-eliminar">Cancelar</button>
+      <button type="button" class="btn-confirmar" id="btn-confirmar-eliminar">Eliminar</button>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+  function formatHoras(valorDecimal) {
+    const decimal = parseFloat(valorDecimal);
+    if (isNaN(decimal)) return "00:00";
+    const totalMinutos = Math.round(decimal * 60);
+    const horas = Math.floor(Math.abs(totalMinutos) / 60);
+    const minutos = Math.abs(totalMinutos) % 60;
+    const signo = totalMinutos < 0 ? "-" : "";
+    return `${signo}${String(horas).padStart(2, "0")}:${String(minutos).padStart(2, "0")}`;
+  }
+
+  document.querySelectorAll(".horas-disponibles").forEach((celda) => {
+    celda.textContent = formatHoras(celda.dataset.horas);
+  });
+
   (function () {
     const overlay = document.getElementById("modal-cargar-horas");
     const form = document.getElementById("form-cargar-horas");
@@ -213,7 +236,11 @@
       }
 
       const fila = document.querySelector(`tr.fila-funcionaria[data-funcionaria-id="${campoFuncionariaId.value}"]`);
-      if (fila) fila.querySelector(".horas-disponibles").textContent = `${datos.horas_disponibles} h`;
+      if (fila) {
+        const celda = fila.querySelector(".horas-disponibles");
+        celda.dataset.horas = datos.horas_disponibles;
+        celda.textContent = formatHoras(datos.horas_disponibles);
+      }
 
       cerrarModal();
       mostrarFlash(datos.mensaje);
@@ -269,7 +296,7 @@
     function actualizarHorasCalculadas() {
       const [desde, hasta] = [campoDesde.value, campoHasta.value];
       if (!desde || !hasta) {
-        horasCalculadas.textContent = "0.00";
+        horasCalculadas.textContent = "00:00";
         advertenciaHoras.textContent = "";
         return;
       }
@@ -277,11 +304,11 @@
       const [hHasta, mHasta] = hasta.split(":").map(Number);
       const minutos = (hHasta * 60 + mHasta) - (hDesde * 60 + mDesde);
       const horas = minutos > 0 ? minutos / 60 : 0;
-      horasCalculadas.textContent = horas.toFixed(2);
+      horasCalculadas.textContent = formatHoras(horas);
 
       const disponibles = parseFloat(form.dataset.horasDisponibles || "0");
       advertenciaHoras.textContent =
-        horas > disponibles ? `Supera las horas disponibles (${disponibles.toFixed(2)} h).` : "";
+        horas > disponibles ? `Supera las horas disponibles (${formatHoras(disponibles)}).` : "";
     }
 
     function actualizarHoraOculta(campoOculto, selectHora, selectMinuto) {
@@ -316,7 +343,7 @@
       boton.addEventListener("click", (evento) => {
         evento.stopPropagation();
         const fila = document.querySelector(`tr.fila-funcionaria[data-funcionaria-id="${boton.dataset.funcionariaId}"]`);
-        const horasDisponibles = fila ? parseFloat(fila.querySelector(".horas-disponibles").textContent) : 0;
+        const horasDisponibles = fila ? parseFloat(fila.querySelector(".horas-disponibles").dataset.horas) : 0;
         abrirModal(boton.dataset.funcionariaId, boton.dataset.funcionariaNombre, horasDisponibles);
       });
     });
@@ -347,8 +374,9 @@
 
       const fila = document.querySelector(`tr.fila-funcionaria[data-funcionaria-id="${campoFuncionariaId.value}"]`);
       if (fila) {
-        fila.querySelector(".horas-disponibles").textContent = `${datos.horas_disponibles} h`;
-        fila.querySelector(".horas-utilizadas").textContent = `${datos.horas_utilizadas_mes} h`;
+        const celdaDisponibles = fila.querySelector(".horas-disponibles");
+        celdaDisponibles.dataset.horas = datos.horas_disponibles;
+        celdaDisponibles.textContent = formatHoras(datos.horas_disponibles);
       }
 
       cerrarModal();
@@ -358,6 +386,35 @@
 
   (function () {
     let filaHistorialAbierta = null;
+    const URL_ELIMINAR_ABONO = "{% url 'registro:eliminar_abono_horas' 0 %}";
+    const URL_ELIMINAR_SOLICITUD = "{% url 'registro:eliminar_solicitud_descanso' 0 %}";
+
+    const modalConfirmar = document.getElementById("modal-confirmar-eliminar");
+    const textoConfirmar = document.getElementById("modal-confirmar-eliminar-texto");
+    const btnCancelarEliminar = document.getElementById("btn-cancelar-eliminar");
+    const btnConfirmarEliminar = document.getElementById("btn-confirmar-eliminar");
+    let accionPendiente = null;
+
+    function pedirConfirmacion(mensaje, accion) {
+      textoConfirmar.textContent = mensaje;
+      accionPendiente = accion;
+      modalConfirmar.classList.add("abierto");
+    }
+
+    function cerrarModalConfirmar() {
+      modalConfirmar.classList.remove("abierto");
+      accionPendiente = null;
+    }
+
+    btnCancelarEliminar.addEventListener("click", cerrarModalConfirmar);
+    modalConfirmar.addEventListener("click", (evento) => {
+      if (evento.target === modalConfirmar) cerrarModalConfirmar();
+    });
+    btnConfirmarEliminar.addEventListener("click", async () => {
+      const accion = accionPendiente;
+      cerrarModalConfirmar();
+      if (accion) await accion();
+    });
 
     function crearFilaTabla(valores) {
       const fila = document.createElement("tr");
@@ -367,6 +424,23 @@
         fila.appendChild(celda);
       });
       return fila;
+    }
+
+    function crearCeldaEliminar(onEliminar) {
+      const boton = document.createElement("button");
+      boton.type = "button";
+      boton.className = "btn-eliminar-registro";
+      boton.title = "Eliminar registro";
+      boton.innerHTML =
+        '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
+      boton.addEventListener("click", (evento) => {
+        evento.stopPropagation();
+        onEliminar();
+      });
+      const celda = document.createElement("td");
+      celda.className = "historial-acciones";
+      celda.appendChild(boton);
+      return celda;
     }
 
     function mostrarMensaje(tbody, columnas, texto) {
@@ -380,27 +454,85 @@
       tbody.appendChild(fila);
     }
 
-    function pintarCargas(tbody, cargas) {
+    async function eliminarRegistro(url) {
+      const csrftoken = document.querySelector("[name=csrfmiddlewaretoken]").value;
+      const respuesta = await fetch(url, {
+        method: "POST",
+        headers: { "X-CSRFToken": csrftoken },
+      });
+      return respuesta.json();
+    }
+
+    function actualizarSaldos(funcionariaId, datos) {
+      const fila = document.querySelector(`tr.fila-funcionaria[data-funcionaria-id="${funcionariaId}"]`);
+      if (!fila) return;
+      if (datos.horas_disponibles !== undefined) {
+        const celda = fila.querySelector(".horas-disponibles");
+        celda.dataset.horas = datos.horas_disponibles;
+        celda.textContent = formatHoras(datos.horas_disponibles);
+      }
+    }
+
+    function pintarCargas(tbody, cargas, funcionariaId, filaFuncionaria, filaHistorial) {
       tbody.innerHTML = "";
       if (cargas.length === 0) {
-        mostrarMensaje(tbody, 3, "Sin cargas registradas.");
+        mostrarMensaje(tbody, 4, "Sin cargas registradas.");
         return;
       }
       cargas.forEach((carga) => {
-        tbody.appendChild(crearFilaTabla([carga.fecha, `${carga.cantidad_horas} h`, carga.motivo || "—"]));
+        const fila = crearFilaTabla([carga.fecha, formatHoras(carga.cantidad_horas), carga.motivo || "—"]);
+        fila.appendChild(
+          crearCeldaEliminar(() => {
+            pedirConfirmacion("¿Eliminar esta carga de horas? Esta acción no se puede deshacer.", async () => {
+              const url = URL_ELIMINAR_ABONO.replace("/0/", `/${carga.id}/`);
+              const datos = await eliminarRegistro(url);
+              if (!datos.ok) {
+                mostrarFlash(datos.mensaje || "No se pudo eliminar el registro.");
+                return;
+              }
+              actualizarSaldos(funcionariaId, datos);
+              abrirHistorial(filaFuncionaria, filaHistorial);
+              mostrarFlash(datos.mensaje);
+            });
+          })
+        );
+        tbody.appendChild(fila);
       });
     }
 
-    function pintarUsos(tbody, usos) {
+    function pintarUsos(tbody, usos, funcionariaId, filaFuncionaria, filaHistorial) {
       tbody.innerHTML = "";
       if (usos.length === 0) {
-        mostrarMensaje(tbody, 5, "Sin horas utilizadas.");
+        mostrarMensaje(tbody, 6, "Sin horas utilizadas.");
         return;
       }
       usos.forEach((uso) => {
-        tbody.appendChild(
-          crearFilaTabla([uso.dia, uso.desde, uso.hasta, uso.fecha_solicitud, `${uso.horas_solicitadas} h`])
+        const fila = crearFilaTabla([
+          uso.dia,
+          uso.desde,
+          uso.hasta,
+          uso.fecha_solicitud,
+          formatHoras(uso.horas_solicitadas),
+        ]);
+        fila.appendChild(
+          crearCeldaEliminar(() => {
+            pedirConfirmacion(
+              "¿Eliminar este registro de horas utilizadas? Esta acción no se puede deshacer.",
+              async () => {
+                const url = URL_ELIMINAR_SOLICITUD.replace("/0/", `/${uso.id}/`);
+                const datos = await eliminarRegistro(url);
+                if (!datos.ok) {
+                  mostrarFlash(datos.mensaje || "No se pudo eliminar el registro.");
+                  return;
+                }
+                actualizarSaldos(funcionariaId, datos);
+                abrirHistorial(filaFuncionaria, filaHistorial);
+                mostrarFlash(datos.mensaje);
+              }
+            );
+          })
         );
+        tbody.appendChild(fila);
       });
     }
 
@@ -408,13 +540,14 @@
       filaHistorial.style.display = "table-row";
       const tbodyCargas = filaHistorial.querySelector(".tabla-cargas");
       const tbodyUsos = filaHistorial.querySelector(".tabla-usos");
-      mostrarMensaje(tbodyCargas, 3, "Cargando...");
-      mostrarMensaje(tbodyUsos, 5, "Cargando...");
+      mostrarMensaje(tbodyCargas, 4, "Cargando...");
+      mostrarMensaje(tbodyUsos, 6, "Cargando...");
 
+      const funcionariaId = filaFuncionaria.dataset.funcionariaId;
       const respuesta = await fetch(filaFuncionaria.dataset.historialUrl);
       const datos = await respuesta.json();
-      pintarCargas(tbodyCargas, datos.cargas);
-      pintarUsos(tbodyUsos, datos.usos);
+      pintarCargas(tbodyCargas, datos.cargas, funcionariaId, filaFuncionaria, filaHistorial);
+      pintarUsos(tbodyUsos, datos.usos, funcionariaId, filaFuncionaria, filaHistorial);
     }
 
     document.querySelectorAll("tr.fila-funcionaria").forEach((filaFuncionaria) => {

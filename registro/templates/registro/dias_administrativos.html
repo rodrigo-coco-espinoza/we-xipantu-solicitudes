@@ -17,7 +17,6 @@
     <tr>
       <th>Nombre</th>
       <th>Días disponibles</th>
-      <th>Días utilizados (este año)</th>
       <th>Acciones</th>
     </tr>
   </thead>
@@ -27,15 +26,14 @@
         data-historial-url="{% url 'registro:historial_dias' fila.funcionaria.id %}">
       <td>{{ fila.nombre_corto }}</td>
       <td class="dias-disponibles">{{ fila.dias_disponibles }} d</td>
-      <td class="dias-utilizados">{{ fila.dias_utilizados_anio }} d</td>
       <td class="acciones">
-        <button type="button" class="btn-descontar-dias"
+        <button type="button" class="btn-icono btn-descontar-dias" title="Descontar días"
                 data-funcionaria-id="{{ fila.funcionaria.id }}"
-                data-funcionaria-nombre="{{ fila.nombre_corto }}">Descontar días</button>
+                data-funcionaria-nombre="{{ fila.nombre_corto }}">&minus;</button>
       </td>
     </tr>
     <tr class="fila-historial" data-funcionaria-id="{{ fila.funcionaria.id }}" style="display: none;">
-      <td colspan="4">
+      <td colspan="3">
         <div class="historial-contenedor">
           <div class="historial-columna">
             <h3>Días cargados</h3>
@@ -50,7 +48,7 @@
             <h3>Días usados</h3>
             <div class="historial-tabla-scroll">
               <table class="tabla-historial">
-                <thead><tr><th>Desde</th><th>Hasta</th><th>Fecha de solicitud</th><th>Días</th></tr></thead>
+                <thead><tr><th>Desde</th><th>Hasta</th><th>Fecha de solicitud</th><th>Días</th><th></th></tr></thead>
                 <tbody class="tabla-usos"></tbody>
               </table>
             </div>
@@ -118,6 +116,17 @@
         <button type="submit" class="btn-confirmar">Confirmar</button>
       </div>
     </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-confirmar-eliminar">
+  <div class="modal">
+    <h2>Eliminar registro</h2>
+    <p id="modal-confirmar-eliminar-texto"></p>
+    <div class="modal-acciones">
+      <button type="button" class="btn-cancelar" id="btn-cancelar-eliminar">Cancelar</button>
+      <button type="button" class="btn-confirmar" id="btn-confirmar-eliminar">Eliminar</button>
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -227,7 +236,6 @@
       const fila = document.querySelector(`tr.fila-funcionaria[data-funcionaria-id="${campoFuncionariaId.value}"]`);
       if (fila) {
         fila.querySelector(".dias-disponibles").textContent = `${datos.dias_disponibles} d`;
-        fila.querySelector(".dias-utilizados").textContent = `${datos.dias_utilizados_anio} d`;
       }
 
       cerrarModal();
@@ -237,6 +245,34 @@
 
   (function () {
     let filaHistorialAbierta = null;
+    const URL_ELIMINAR_SOLICITUD = "{% url 'registro:eliminar_solicitud_permiso' 0 %}";
+
+    const modalConfirmar = document.getElementById("modal-confirmar-eliminar");
+    const textoConfirmar = document.getElementById("modal-confirmar-eliminar-texto");
+    const btnCancelarEliminar = document.getElementById("btn-cancelar-eliminar");
+    const btnConfirmarEliminar = document.getElementById("btn-confirmar-eliminar");
+    let accionPendiente = null;
+
+    function pedirConfirmacion(mensaje, accion) {
+      textoConfirmar.textContent = mensaje;
+      accionPendiente = accion;
+      modalConfirmar.classList.add("abierto");
+    }
+
+    function cerrarModalConfirmar() {
+      modalConfirmar.classList.remove("abierto");
+      accionPendiente = null;
+    }
+
+    btnCancelarEliminar.addEventListener("click", cerrarModalConfirmar);
+    modalConfirmar.addEventListener("click", (evento) => {
+      if (evento.target === modalConfirmar) cerrarModalConfirmar();
+    });
+    btnConfirmarEliminar.addEventListener("click", async () => {
+      const accion = accionPendiente;
+      cerrarModalConfirmar();
+      if (accion) await accion();
+    });
 
     function crearFilaTabla(valores) {
       const fila = document.createElement("tr");
@@ -246,6 +282,23 @@
         fila.appendChild(celda);
       });
       return fila;
+    }
+
+    function crearCeldaEliminar(onEliminar) {
+      const boton = document.createElement("button");
+      boton.type = "button";
+      boton.className = "btn-eliminar-registro";
+      boton.title = "Eliminar registro";
+      boton.innerHTML =
+        '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
+      boton.addEventListener("click", (evento) => {
+        evento.stopPropagation();
+        onEliminar();
+      });
+      const celda = document.createElement("td");
+      celda.className = "historial-acciones";
+      celda.appendChild(boton);
+      return celda;
     }
 
     function mostrarMensaje(tbody, columnas, texto) {
@@ -259,6 +312,23 @@
       tbody.appendChild(fila);
     }
 
+    async function eliminarRegistro(url) {
+      const csrftoken = document.querySelector("[name=csrfmiddlewaretoken]").value;
+      const respuesta = await fetch(url, {
+        method: "POST",
+        headers: { "X-CSRFToken": csrftoken },
+      });
+      return respuesta.json();
+    }
+
+    function actualizarSaldos(funcionariaId, datos) {
+      const fila = document.querySelector(`tr.fila-funcionaria[data-funcionaria-id="${funcionariaId}"]`);
+      if (!fila) return;
+      if (datos.dias_disponibles !== undefined) {
+        fila.querySelector(".dias-disponibles").textContent = `${datos.dias_disponibles} d`;
+      }
+    }
+
     function pintarCargas(tbody, cargas) {
       tbody.innerHTML = "";
       if (cargas.length === 0) {
@@ -270,16 +340,33 @@
       });
     }
 
-    function pintarUsos(tbody, usos) {
+    function pintarUsos(tbody, usos, funcionariaId, filaFuncionaria, filaHistorial) {
       tbody.innerHTML = "";
       if (usos.length === 0) {
-        mostrarMensaje(tbody, 4, "Sin días utilizados.");
+        mostrarMensaje(tbody, 5, "Sin días utilizados.");
         return;
       }
       usos.forEach((uso) => {
-        tbody.appendChild(
-          crearFilaTabla([uso.desde, uso.hasta, uso.fecha_solicitud, `${uso.cantidad_dias} d`])
+        const fila = crearFilaTabla([uso.desde, uso.hasta, uso.fecha_solicitud, `${uso.cantidad_dias} d`]);
+        fila.appendChild(
+          crearCeldaEliminar(() => {
+            pedirConfirmacion(
+              "¿Eliminar este registro de días utilizados? Esta acción no se puede deshacer.",
+              async () => {
+                const url = URL_ELIMINAR_SOLICITUD.replace("/0/", `/${uso.id}/`);
+                const datos = await eliminarRegistro(url);
+                if (!datos.ok) {
+                  mostrarFlash(datos.mensaje || "No se pudo eliminar el registro.");
+                  return;
+                }
+                actualizarSaldos(funcionariaId, datos);
+                abrirHistorial(filaFuncionaria, filaHistorial);
+                mostrarFlash(datos.mensaje);
+              }
+            );
+          })
         );
+        tbody.appendChild(fila);
       });
     }
 
@@ -288,12 +375,13 @@
       const tbodyCargas = filaHistorial.querySelector(".tabla-cargas");
       const tbodyUsos = filaHistorial.querySelector(".tabla-usos");
       mostrarMensaje(tbodyCargas, 2, "Cargando...");
-      mostrarMensaje(tbodyUsos, 4, "Cargando...");
+      mostrarMensaje(tbodyUsos, 5, "Cargando...");
 
+      const funcionariaId = filaFuncionaria.dataset.funcionariaId;
       const respuesta = await fetch(filaFuncionaria.dataset.historialUrl);
       const datos = await respuesta.json();
       pintarCargas(tbodyCargas, datos.cargas);
-      pintarUsos(tbodyUsos, datos.usos);
+      pintarUsos(tbodyUsos, datos.usos, funcionariaId, filaFuncionaria, filaHistorial);
     }
 
     document.querySelectorAll("tr.fila-funcionaria").forEach((filaFuncionaria) => {

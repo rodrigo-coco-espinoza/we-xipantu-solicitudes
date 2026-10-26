@@ -53,8 +53,13 @@
     margin-left: 20px;
   }
   header nav a:hover {
-    color: var(--rojo-junji);
+    color: var(--gris);
+    text-decoration: none;
+  }
+  header nav a.activo {
+    color: var(--gris);
     text-decoration: underline;
+    font-weight: 600;
   }
   main {
     flex: 1;
@@ -129,6 +134,39 @@
     background: var(--azul-junji);
     color: var(--blanco);
   }
+  .acciones .btn-icono {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    font-size: 1.4rem;
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: color 0.15s ease, transform 0.1s ease;
+  }
+  .acciones .btn-cargar-horas {
+    color: var(--gris);
+  }
+  .acciones .btn-cargar-horas:hover {
+    background: transparent;
+    color: var(--verde);
+    transform: scale(1.15);
+  }
+  .acciones .btn-descontar-horas,
+  .acciones .btn-descontar-dias {
+    color: var(--gris);
+  }
+  .acciones .btn-descontar-horas:hover,
+  .acciones .btn-descontar-dias:hover {
+    background: transparent;
+    color: var(--rojo-junji);
+    transform: scale(1.15);
+  }
   .vacio {
     color: var(--texto-secundario);
     font-style: italic;
@@ -184,13 +222,39 @@
     font-style: italic;
     font-size: 0.85rem;
   }
+  .historial-acciones {
+    width: 1%;
+    white-space: nowrap;
+    text-align: center;
+  }
+  .btn-eliminar-registro {
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--gris);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s ease, transform 0.1s ease;
+  }
+  .btn-eliminar-registro:hover {
+    background: transparent;
+    color: var(--rojo-junji);
+    transform: scale(1.15);
+  }
   .boton-primario {
     padding: 8px 16px;
     border-radius: 6px;
     font-size: 0.9rem;
     cursor: pointer;
-    background: var(--azul-junji);
+    background: var(--blanco);
     border: 1px solid var(--azul-junji);
+    color: var(--azul-junji);
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .boton-primario:hover {
+    background: var(--azul-junji);
     color: var(--blanco);
   }
   .barra-acciones {
@@ -305,16 +369,31 @@
     border-radius: 6px;
     font-size: 0.9rem;
     cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
   }
   .modal .btn-cancelar {
     background: var(--blanco);
     border: 1px solid var(--borde);
     color: var(--texto);
   }
+  .modal .btn-cancelar:hover {
+    background: var(--fondo-pagina);
+    border-color: var(--texto-secundario);
+    transform: translateY(-1px);
+  }
   .modal .btn-confirmar {
     background: var(--azul-junji);
     border: 1px solid var(--azul-junji);
     color: var(--blanco);
+  }
+  .modal .btn-confirmar:hover {
+    background: var(--azul-oscuro);
+    border-color: var(--azul-oscuro);
+    transform: translateY(-1px);
+  }
+  #modal-confirmar-eliminar .btn-confirmar:hover {
+    background: var(--rojo-junji);
+    border-color: var(--rojo-junji);
   }
 </style>
 </head>
@@ -327,8 +406,8 @@
       We Xipantu
     </a>
     <nav>
-      <a href="{% url 'registro:descanso_complementario' %}">Descanso complementario</a>
-      <a href="{% url 'registro:dias_administrativos' %}">Días administrativos</a>
+      <a href="{% url 'registro:descanso_complementario' %}" class="{% if request.resolver_match.url_name == 'descanso_complementario' %}activo{% endif %}">Descanso complementario</a>
+      <a href="{% url 'registro:dias_administrativos' %}" class="{% if request.resolver_match.url_name == 'dias_administrativos' %}activo{% endif %}">Días administrativos</a>
     </nav>
   </div>
 </header>

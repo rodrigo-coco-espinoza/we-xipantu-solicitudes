@@ -10,7 +10,15 @@ from .forms import (
     SolicitudDescansoComplementarioForm,
     SolicitudPermisoDiasAdministrativosForm,
 )
-from .models import AbonoDiasAdministrativos, DatosJardin, Estamento, Funcionaria
+from .models import (
+    AbonoDiasAdministrativos,
+    AbonoHorasCompensadas,
+    DatosJardin,
+    Estamento,
+    Funcionaria,
+    SolicitudDescansoComplementario,
+    SolicitudPermisoDiasAdministrativos,
+)
 
 GRUPOS_ESTAMENTO = [
     (Estamento.PROFESIONAL, "Educadoras"),
@@ -105,6 +113,7 @@ def historial_horas(request, funcionaria_id):
 
     cargas = [
         {
+            "id": abono.id,
             "fecha": abono.fecha.strftime("%d-%m-%Y"),
             "cantidad_horas": str(abono.cantidad_horas),
             "motivo": abono.motivo,
@@ -113,6 +122,7 @@ def historial_horas(request, funcionaria_id):
     ]
     usos = [
         {
+            "id": solicitud.id,
             "dia": solicitud.dia.strftime("%d-%m-%Y"),
             "desde": solicitud.desde.strftime("%H:%M"),
             "hasta": solicitud.hasta.strftime("%H:%M"),
@@ -123,6 +133,41 @@ def historial_horas(request, funcionaria_id):
     ]
 
     return JsonResponse({"cargas": cargas, "usos": usos})
+
+
+def eliminar_abono_horas(request, abono_id):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    abono = get_object_or_404(AbonoHorasCompensadas, pk=abono_id)
+    funcionaria = abono.funcionaria
+    abono.delete()
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "mensaje": f"Se eliminó la carga de horas de {funcionaria.nombre_corto()}.",
+            "horas_disponibles": str(funcionaria.saldo_horas_compensadas()),
+        }
+    )
+
+
+def eliminar_solicitud_descanso(request, solicitud_id):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    solicitud = get_object_or_404(SolicitudDescansoComplementario, pk=solicitud_id)
+    funcionaria = solicitud.funcionaria
+    solicitud.delete()
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "mensaje": f"Se eliminó el registro de horas utilizadas de {funcionaria.nombre_corto()}.",
+            "horas_disponibles": str(funcionaria.saldo_horas_compensadas()),
+            "horas_utilizadas_mes": str(funcionaria.horas_utilizadas_mes_actual()),
+        }
+    )
 
 
 def cargar_dias_equipo(request):
@@ -198,6 +243,7 @@ def historial_dias(request, funcionaria_id):
     ]
     usos = [
         {
+            "id": solicitud.id,
             "desde": solicitud.desde.strftime("%d-%m-%Y"),
             "hasta": solicitud.hasta.strftime("%d-%m-%Y"),
             "fecha_solicitud": solicitud.fecha_solicitud.strftime("%d-%m-%Y"),
@@ -207,3 +253,21 @@ def historial_dias(request, funcionaria_id):
     ]
 
     return JsonResponse({"cargas": cargas, "usos": usos})
+
+
+def eliminar_solicitud_permiso(request, solicitud_id):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    solicitud = get_object_or_404(SolicitudPermisoDiasAdministrativos, pk=solicitud_id)
+    funcionaria = solicitud.funcionaria
+    solicitud.delete()
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "mensaje": f"Se eliminó el registro de días utilizados de {funcionaria.nombre_corto()}.",
+            "dias_disponibles": str(funcionaria.saldo_dias_administrativos()),
+            "dias_utilizados_anio": str(funcionaria.dias_utilizados_anio_actual()),
+        }
+    )
